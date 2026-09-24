@@ -1,0 +1,120 @@
+# 把「沉迷啥」Web 应用（Kotlin/Wasm）构建并部署到 GitHub Pages。
+#
+# 前置条件（首次需要手动设置一次）：
+#   仓库 Settings → Pages → Build and deployment → Source 选择 "GitHub Actions"。
+#   未设置时 deploy 步骤会报 "Pages is not enabled"。
+#
+# 部署地址：https://<owner>.github.io/<repo>/   （项目站点，即子路径部署）
+#
+# 两个刻意选择：
+#   1. 只用 `-m webApp -p wasmJs`。CI 里没有、也不该有 Android SDK 许可，
+#      构建 Android 目标会直接失败；Web 部署只需要 wasmJs 一个平台。
+#   2. 产物路径是工具链的构建任务目录（`build/tasks/_webApp_buildWasmJsAppWasmJsRelease`），
+#      因为 `kotlin package` 目前不支持 wasm-js 应用（会报 "No package tasks were found"）。
+#      产物里所有资源引用（脚本、skiko.wasm、composeResources、vendors）都是**相对路径**，
+#      因此子路径部署无需额外配置 base path。
+name: Deploy webApp to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    # 只在会影响 Web 产物、或需要通过自检的路径上触发。
+    # 刻意不含 server/**：server 不影响 Web 产物，其 CI 应另开工作流（当前仓库没有）。
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'docs/**'
+      - 'tools/**'
+      - 'AGENTS.md'
+      - 'project.yaml'
+      - 'libs.versions.toml'
+      - 'kotlin'
+      - 'kotlin.bat'
+      - '.github/workflows/deploy-webapp-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个 Pages 部署；不打断正在进行的部署
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建 Web 产物
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # Kotlin/Wasm 构建需要系统 Node：工具链会自行下载 pnpm，但不会自带 Node 运行时
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # `./kotlin` 是自举包装脚本，会下载并固定版本的工具链、JRE/JDK 与 pnpm（数百 MB）。
+      # 缓存这个目录能省掉重复下载与解压（实测整个目录约 1.5 GB）。
+      # 若发现缓存上传/恢复比冷下载还慢，可把 path 收窄为：
+      #   ~/.cache/JetBrains/Kotlin/cli        （已解压的 CLI + JRE，约 440 MB）
+      #   ~/.cache/JetBrains/Kotlin/.m2.cache  （依赖构件缓存，约 310 MB）
+      # 构建产物缓存位于 build/ 下，体量大且可重建，不缓存。
+      - name: 缓存 Kotlin 工具链
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/JetBrains/Kotlin
+          key: kotlin-toolchain-${{ runner.os }}-${{ hashFiles('kotlin', 'kotlin.bat', 'project.yaml', 'libs.versions.toml') }}
+          restore-keys: |
+            kotlin-toolchain-${{ runner.os }}-
+
+      # 下面是仓库约定的两项自检（见 AGENTS.md）：文档与代码逐条比对、内容体系与解锁规则测试
+      - name: 自检：文档与代码一致性
+        run: python3 tools/check-content-doc.py
+
+      - name: 测试：core 内容体系与解锁规则
+        run: ./kotlin test -m core -p jvm
+
+      - name: 构建 Web 应用（release）
+        run: ./kotlin build -m webApp -p wasmJs -v release
+
+      - name: 组装 Pages 产物
+        run: |
+          set -euo pipefail
+          SRC="build/tasks/_webApp_buildWasmJsAppWasmJsRelease"
+          if [ ! -f "$SRC/index.html" ]; then
+            echo "::error::未找到 Web 产物目录 $SRC，工具链可能改了产物路径"
+            ls -la build/tasks | head -30
+            exit 1
+          fi
+          rm -rf dist
+          mkdir -p dist
+          cp -R "$SRC/." dist/
+          # 关闭 Jekyll：产物里不应被当成站点源做任何处理（对 artifact 部署是保险，不是必需）
+          touch dist/.nojekyll
+          echo "产物清单："
+          ls -la dist
+          echo "总大小："
+          du -sh dist
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4

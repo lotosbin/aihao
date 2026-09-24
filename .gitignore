@@ -1,6 +1,7 @@
 *.iml
 .kotlin
 build/
+dist/
 .DS_Store
 captures
 **/module.xcodeproj/*
