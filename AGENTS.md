@@ -23,14 +23,20 @@
 - 内容体系唯一入口：`com.yuanjingtech.aihao.content.ChenmiSha`；
   审核自检：`ContentAudit`；UI 接入：`app/shared/src/ui/ChenmiShaApp.kt`。
 - `core` 不依赖任何 UI 框架，颜色等平台相关转换放在 `app/shared` 层。
+- 中文字体内置在 `app/shared/composeResources/font/`（霞鹜文楷子集），由 `ChenmiShaTheme`
+  应用到 Material 3 全部文字样式；新增生僻字用字或升级字体版本后，
+  必须运行 `bash tools/subset-lxgw-font.sh` 重新生成子集（脚本内含覆盖率硬校验）。
+  详见 `docs/字体与中文显示.md`。
 - 验证命令：
 
   ```bash
-  ./kotlin test -m core -p jvm      # 内容体系与段位名称规则
-  ./kotlin test -m shared -p jvm    # 共享 UI 与既有测试
+  ./kotlin test -m core -p jvm          # 内容体系、解锁规则与段位名称
+  ./kotlin test -m shared -p jvm        # 共享 UI 与既有测试
+  python3 tools/check-content-doc.py    # 文档表格与 core 数据逐条比对
   ```
 
 - 本机未接受 Android SDK 许可，整包 `./kotlin build` 会在 Android 目标上失败。
   验证时用 `-p jvm` / `-p wasmJs` 指定平台；**不要替用户接受许可协议**。
-- 改动内容体系后，除跑测试外，还需核对 `docs/chenmisha-content-system.md`
-  的表格与 `core/src/content` 的数据是否一致。
+- 改动内容体系后，除跑测试外，必须跑 `python3 tools/check-content-doc.py` 核对
+  `docs/chenmisha-content-system.md` 的表格与 `core/src/content` 的数据；
+  表格行的顺序也被校验（矩阵顺序即展示顺序），改动顺序时文档要同步改。

@@ -16,6 +16,10 @@ The hobby content system (6 tiers × 2 gender editions × 7 hobbies, plus festiv
 - Spec: [docs/chenmisha-content-system.md](./docs/chenmisha-content-system.md) — the single source of truth for copy; content changes must update the code and this doc together.
 - Entry point: `com.yuanjingtech.aihao.content.ChenmiSha`.
 - Content lint (spec 8.1): `com.yuanjingtech.aihao.content.ContentAudit`, run by `core/test/ContentLibraryTest.kt`.
+- Chinese font: 霞鹜文楷 (LXGW WenKai) is bundled as a subset and applied to all Material 3 text styles by `ChenmiShaTheme`; see [docs/字体与中文显示.md](./docs/字体与中文显示.md) and regenerate with `bash tools/subset-lxgw-font.sh`.
+- Unlock rules: pick hobbies to light up badges, implemented in `core/src/content/Progression.kt` and covered by `core/test/ProgressionTest.kt`.
+- Doc/code consistency: `python3 tools/check-content-doc.py` compares every table in the spec against the content library.
+- Deployment: pushes to `main` build the Web app and publish it to GitHub Pages — see [docs/部署到 GitHub Pages.md](./docs/部署到 GitHub Pages.md) and `.github/workflows/deploy-webapp-pages.yml` (one-time setup: set Pages source to "GitHub Actions").
 - Preview the badges: `./kotlin run -m desktopApp` or `./kotlin run -m webApp`.
 
 The `kotlin` (macOS/Linux) and `kotlin.bat` (Windows) scripts in the project root are self-bootstrapping wrappers for the Kotlin Toolchain: they download the pinned toolchain version on first use, so no separate installation is required. Build the whole project with `./kotlin build`.
