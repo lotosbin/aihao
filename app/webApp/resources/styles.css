@@ -4,4 +4,6 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    /* 加载壳页（wasm 初始化前）的中文回退链；应用内的文字由 Compose 用内置的霞鹜文楷绘制 */
+    font-family: "LXGW WenKai", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
