@@ -5,8 +5,18 @@ This is a Kotlin Multiplatform project targeting Android, Desktop (JVM), iOS, We
 - [/app/iosApp](./app/iosApp) contains the iOS application.
 - [/app/shared](./app/shared) holds the code shared across your applications — Compose UI, business logic, and platform-specific implementations. [src](./app/shared/src) is for common code; the sibling `src@<platform>` folders (for example `src@android`) hold code compiled only for the platform named in the folder.
 - [/app/webApp](./app/webApp) contains the web application, compiled to WebAssembly with Kotlin/Wasm.
-- [/core](./core) holds the code shared across the project, including the greeting helper the apps and the server both use.
+- [/core](./core) holds the code shared across the project: the greeting helper plus the 【沉迷啥】content system (`core/src/content`).
 - [/server](./server) contains the Ktor server application.
+- [/docs](./docs) holds the content specification. See [沉迷啥内容体系规格](./docs/chenmisha-content-system.md) for the tier, badge and hobby-matrix spec that `core/src/content` implements.
+
+### 【沉迷啥】内容体系
+
+The hobby content system (6 tiers × 2 gender editions × 7 hobbies, plus festival / regional / brand limited content, hidden tags and easter eggs) lives in `core/src/content` and is consumed by `app/shared/src/ui/ChenmiShaApp.kt`. `core` has no UI dependency, so the server can serve the same content source.
+
+- Spec: [docs/chenmisha-content-system.md](./docs/chenmisha-content-system.md) — the single source of truth for copy; content changes must update the code and this doc together.
+- Entry point: `com.yuanjingtech.aihao.content.ChenmiSha`.
+- Content lint (spec 8.1): `com.yuanjingtech.aihao.content.ContentAudit`, run by `core/test/ContentLibraryTest.kt`.
+- Preview the badges: `./kotlin run -m desktopApp` or `./kotlin run -m webApp`.
 
 The `kotlin` (macOS/Linux) and `kotlin.bat` (Windows) scripts in the project root are self-bootstrapping wrappers for the Kotlin Toolchain: they download the pinned toolchain version on first use, so no separate installation is required. Build the whole project with `./kotlin build`.
 
