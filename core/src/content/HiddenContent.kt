@@ -18,9 +18,24 @@ data class HiddenTag(
 )
 
 /**
+ * 彩蛋触发条件中**可由「已选爱好」直接判定**的部分。
+ *
+ * 时间类（午夜场）、服务端类（共创者）触发的彩蛋没有触发器，其 [EasterEgg.trigger] 为 null，
+ * 需要接入埋点后另行判定。
+ */
+sealed interface EggTrigger {
+    /** 需要同时拥有这些爱好（按 [Hobby.id] 判定）。 */
+    data class RequiresHobbies(val hobbyIds: Set<String>) : EggTrigger
+
+    /** 六个段位全部点亮。 */
+    object AllTiersUnlocked : EggTrigger
+}
+
+/**
  * 彩蛋：满足特殊条件时触发的额外奖励（规格「总结」提到的彩蛋）。
  *
  * @property reward 触发后发放的奖励，通常是限定量段位名称或徽章特效。
+ * @property trigger 可自动判定的触发条件；null 表示依赖时间或服务端行为。
  */
 data class EasterEgg(
     val id: String,
@@ -28,6 +43,7 @@ data class EasterEgg(
     val condition: String,
     val reward: String,
     val tier: Tier? = null,
+    val trigger: EggTrigger? = null,
 )
 
 /** 隐藏标签库。 */
@@ -106,7 +122,12 @@ internal val HIDDEN_TAGS: List<HiddenTag> = listOf(
     ),
 )
 
-/** 彩蛋库。 */
+/**
+ * 彩蛋库。
+ *
+ * 其中 5 个可以由「已选爱好」直接判定（配置了 [EasterEgg.trigger]），
+ * 供交互页实时触发；其余依赖时间、跨版本或服务端行为。
+ */
 internal val EASTER_EGGS: List<EasterEgg> = listOf(
     EasterEgg(
         id = "egg.retirement-ready",
@@ -114,6 +135,9 @@ internal val EASTER_EGGS: List<EasterEgg> = listOf(
         condition = "同时拥有钓鱼、品茶、太极",
         reward = "解锁限定段位名称「退休预备役」",
         tier = Tier.DEMIGOD,
+        trigger = EggTrigger.RequiresHobbies(
+            setOf("m.intermediate.fishing", "m.teacher.tea", "m.demigod.tai-chi"),
+        ),
     ),
     EasterEgg(
         id = "egg.wellness-host",
@@ -121,6 +145,9 @@ internal val EASTER_EGGS: List<EasterEgg> = listOf(
         condition = "同时拥有泡脚、抄经、佛系养生",
         reward = "徽章增加暖色流光描边",
         tier = Tier.GREAT_GOD,
+        trigger = EggTrigger.RequiresHobbies(
+            setOf("f.greatgod.foot-soak", "f.greatgod.sutra", "f.greatgod.wellness"),
+        ),
     ),
     EasterEgg(
         id = "egg.digital-midlife",
@@ -128,6 +155,9 @@ internal val EASTER_EGGS: List<EasterEgg> = listOf(
         condition = "同时拥有 NAS、机械键盘、HiFi 音响",
         reward = "徽章刻上「RAID 已就绪」小字",
         tier = Tier.MASTER_TEACHER,
+        trigger = EggTrigger.RequiresHobbies(
+            setOf("m.teacher.nas", "m.teacher.keyboard", "m.teacher.hifi"),
+        ),
     ),
     EasterEgg(
         id = "egg.park-king",
@@ -135,6 +165,7 @@ internal val EASTER_EGGS: List<EasterEgg> = listOf(
         condition = "最高段位为大神级且包含公园晨练",
         reward = "徽章叠加金色流光描边，段位名称固定为「炫彩公园之王」",
         tier = Tier.GREAT_GOD,
+        trigger = EggTrigger.RequiresHobbies(setOf("m.greatgod.park-morning")),
     ),
     EasterEgg(
         id = "egg.midnight-show",
@@ -148,6 +179,7 @@ internal val EASTER_EGGS: List<EasterEgg> = listOf(
         condition = "六个段位全部点亮",
         reward = "解锁炫彩流光动态边框，称号「沉迷之神」",
         tier = Tier.GREAT_GOD,
+        trigger = EggTrigger.AllTiersUnlocked,
     ),
     EasterEgg(
         id = "egg.crossover",
